@@ -1,0 +1,27 @@
+[Unit]
+Description=Project-R Metadata Scraper Service
+Documentation=https://github.com/willzmkv/pr-meta
+After=network-online.target
+Wants=network-online.target
+Before=pr-builder.service
+
+[Service]
+Type=simple
+# "+" runs these as root: User=arcade cannot create/chown dirs under /run.
+ExecStartPre=+/usr/bin/mkdir -p /run/project-r
+ExecStartPre=+/usr/bin/chown arcade:arcade /run/project-r
+ExecStart=/usr/bin/pr-meta
+Restart=on-failure
+RestartSec=5
+User=arcade
+Environment=HOME=/home/arcade
+Environment=PR_META_SOCKET=/run/project-r/pr-meta.sock
+Environment=PR_GAMES_ROOT=/home/arcade/games
+# Scraper credentials (SS_DEVID, SS_DEVPASSWORD, IGDB_CLIENT_ID, ...) are optional.
+EnvironmentFile=-/etc/project-r/pr-meta.env
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pr-meta
+
+[Install]
+WantedBy=multi-user.target

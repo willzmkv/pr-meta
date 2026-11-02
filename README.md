@@ -42,7 +42,7 @@ pr-meta owns this contract; `pr-builder` is the client.
 
 | | |
 |---|---|
-| Socket | Unix stream socket at **`/run/pr-meta.sock`** (override with `PR_META_SOCKET`) |
+| Socket | Unix stream socket at **`/run/project-r/pr-meta.sock`** (override with `PR_META_SOCKET`) |
 | Permissions | `0660` — clients must share the service's group |
 | Framing | **One UTF-8 JSON object per connection**, max 64 KiB. Send it, then close (or `shutdown(SHUT_WR)`). A message split across several writes is reassembled. |
 | Reply | None. The server closes the connection once the event has been fully processed, so a client *may* read until EOF to wait for completion (optional). |
@@ -54,7 +54,7 @@ Minimal client:
 import json, socket
 
 with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-    s.connect("/run/pr-meta.sock")
+    s.connect("/run/project-r/pr-meta.sock")
     s.sendall(json.dumps(event).encode("utf-8"))
     s.shutdown(socket.SHUT_WR)
     s.recv(1)  # optional: returns b"" once pr-meta has finished processing
@@ -170,7 +170,7 @@ All settings come from the environment — no credentials live in this repo.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PR_META_SOCKET` | `/run/pr-meta.sock` | Socket path |
+| `PR_META_SOCKET` | `/run/project-r/pr-meta.sock` | Socket path |
 | `PR_GAMES_ROOT` | `~/games` | Library root (`{root}/{platform}/{title}/`) |
 | `SS_DEVID`, `SS_DEVPASSWORD` | empty | ScreenScraper.fr developer credentials |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | empty | Twitch app credentials for IGDB |

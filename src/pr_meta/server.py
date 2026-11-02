@@ -15,7 +15,7 @@ from .scrapers import scrape
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_SOCKET = "/run/pr-meta.sock"
+_DEFAULT_SOCKET = "/run/project-r/pr-meta.sock"
 _DEFAULT_GAMES_ROOT = Path.home() / "games"
 
 
