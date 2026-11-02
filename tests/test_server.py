@@ -255,3 +255,64 @@ async def test_socket_server_end_to_end(tmp_path):
     assert game.findtext("name") == "Super Mario 64"
     assert game.findtext("pr_badge") == "BUILDING"
     assert json.loads((game_dir / "pr-meta.json").read_text())["badge"] == "BUILDING"
+
+
+@pytest.mark.asyncio
+async def test_full_pipeline_badge_flips_emu_to_native(tmp_path):
+    """Simulate: game installed as EMU, then build completes and badge flips to NATIVE."""
+    game_dir = tmp_path / "n64" / "Banjo-Kazooie"
+    game_dir.mkdir(parents=True)
+
+    # Step 1: install as EMU (no build project found)
+    install_emu = {
+        "event": "game_installed",
+        "platform": "n64",
+        "title": "Banjo-Kazooie",
+        "rom_hash": "abc123",
+        "game_dir": str(game_dir),
+        "badge": "EMU",
+        "core": "mupen64plus_next",
+        "binary": "",
+    }
+
+    emu_meta = {
+        "title": "Banjo-Kazooie",
+        "year": 1998,
+        "genre": "Platform",
+        "publisher": "Nintendo",
+        "developer": "Rare",
+        "description": "Collect jiggies.",
+        "rating": 0.92,
+        "players": 1,
+        "image_url": None,
+        "video_url": None,
+    }
+
+    with (
+        patch("pr_meta.server.scrape", new_callable=AsyncMock, return_value=emu_meta),
+        patch(
+            "pr_meta.server.download_media",
+            new_callable=AsyncMock,
+            return_value={"image": None, "video": None},
+        ),
+    ):
+        await handle_event(install_emu, games_root=tmp_path)
+
+    gamelist_path = tmp_path / "n64" / "gamelist.xml"
+    assert "<pr_badge>EMU</pr_badge>" in gamelist_path.read_text()
+
+    # Step 2: build completes — flip badge to NATIVE
+    flip_event = {
+        "event": "badge_update",
+        "platform": "n64",
+        "title": "Banjo-Kazooie",
+        "game_dir": str(game_dir),
+        "badge": "NATIVE",
+        "core": None,
+        "progress": None,
+    }
+    await handle_event(flip_event, games_root=tmp_path)
+
+    content = gamelist_path.read_text()
+    assert "<pr_badge>NATIVE</pr_badge>" in content
+    assert "<pr_badge>EMU</pr_badge>" not in content

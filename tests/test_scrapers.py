@@ -328,3 +328,53 @@ async def test_scrape_falls_through_when_a_scraper_raises():
         result = await scrape(platform="n64", title="Super Mario 64")
     assert result["title"] == "Super Mario 64"
     tgdb_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_screenscraper_unknown_platform_skips_http():
+    client = ScreenScraperClient(devid="testdev", devpassword="testpass", softname="pr-meta")
+    with patch("pr_meta.scrapers.screenscraper.aiohttp.ClientSession") as session_cls:
+        result = await client.scrape(platform="atari2600", title="Pitfall!")
+    assert result is None
+    session_cls.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "note, expected",
+    [("19/20", 0.95), ("0.8", 0.8), ("n/a", None), ("1/0", None), ("", None), (None, None)],
+)
+def test_screenscraper_parse_rating(note, expected):
+    from pr_meta.scrapers.screenscraper import _parse_rating
+
+    assert _parse_rating(note) == expected
+
+
+@pytest.mark.asyncio
+async def test_screenscraper_falls_back_to_first_region_and_language():
+    response = {
+        "response": {
+            "jeu": {
+                "noms": [{"region": "jp", "text": "Super Mario 64 (JP)"}],
+                "dates": [{"region": "jp", "text": "1996"}],
+                "genres": [{"noms": [{"langue": "fr", "text": "Plateforme"}]}],
+                "synopsis": [{"langue": "fr", "text": "Guidez Mario."}],
+                "joueurs": {"text": "1-2"},
+                "medias": [],
+            }
+        }
+    }
+    client = ScreenScraperClient(devid="testdev", devpassword="testpass", softname="pr-meta")
+    with patch(
+        "pr_meta.scrapers.screenscraper.aiohttp.ClientSession",
+        return_value=_make_mock_session(response),
+    ):
+        result = await client.scrape(platform="n64", title="Super Mario 64")
+
+    assert result["title"] == "Super Mario 64 (JP)"
+    assert result["year"] == 1996
+    assert result["genre"] == "Plateforme"
+    assert result["description"] == "Guidez Mario."
+    assert result["players"] is None  # non-integer player count is dropped
+    assert result["rating"] is None
+    assert result["image_url"] is None
+    assert result["video_url"] is None
