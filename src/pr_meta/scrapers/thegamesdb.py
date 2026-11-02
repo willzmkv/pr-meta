@@ -4,7 +4,6 @@ from typing import Any
 
 import aiohttp
 
-
 _BASE_URL = "https://api.thegamesdb.net/v1"
 
 

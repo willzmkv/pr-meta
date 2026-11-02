@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Badge(str, Enum):
+class Badge(StrEnum):
     """Valid badge values and their IHC display colors.
 
     Semantics (IHC guideline):

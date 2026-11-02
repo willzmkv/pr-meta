@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 _META_FILENAME = "pr-meta.json"
 
 

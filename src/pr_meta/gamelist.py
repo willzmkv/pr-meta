@@ -3,7 +3,6 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-
 EMPTY_GAMELIST_XML = '<?xml version="1.0" encoding="utf-8"?>\n<gameList>\n</gameList>\n'
 
 # Fields written in order for readability.

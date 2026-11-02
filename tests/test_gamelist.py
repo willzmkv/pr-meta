@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET
 
-from pr_meta.gamelist import upsert_game, read_gamelist, write_gamelist, EMPTY_GAMELIST_XML
-
+from pr_meta.gamelist import EMPTY_GAMELIST_XML, read_gamelist, upsert_game, write_gamelist
 
 GAME_ENTRY = {
     "path": "./Super Mario 64/sm64.x86_64",

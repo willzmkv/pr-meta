@@ -8,10 +8,10 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from .scrapers import scrape
-from .gamelist import read_gamelist, upsert_game, write_gamelist
-from .meta_writer import write_meta, read_meta
 from .downloader import download_media
+from .gamelist import read_gamelist, upsert_game, write_gamelist
+from .meta_writer import read_meta, write_meta
+from .scrapers import scrape
 
 logger = logging.getLogger(__name__)
 

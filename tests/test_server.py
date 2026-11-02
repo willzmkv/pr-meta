@@ -7,7 +7,6 @@ import pytest
 
 from pr_meta.server import _serve, handle_event
 
-
 INSTALL_EVENT = {
     "event": "game_installed",
     "platform": "n64",

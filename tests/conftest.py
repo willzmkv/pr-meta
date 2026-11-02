@@ -1,6 +1,5 @@
 import pytest
 
-
 SAMPLE_INSTALL_EVENT = {
     "event": "game_installed",
     "platform": "n64",

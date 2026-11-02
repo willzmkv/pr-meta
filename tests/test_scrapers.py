@@ -1,13 +1,12 @@
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
+import pytest
 
 from pr_meta.scrapers import scrape
 from pr_meta.scrapers.igdb import IGDBClient
 from pr_meta.scrapers.screenscraper import ScreenScraperClient
 from pr_meta.scrapers.thegamesdb import TheGamesDBClient
-
 
 SCREENSCRAPER_RESPONSE = {
     "response": {
@@ -250,7 +249,9 @@ async def test_scrape_returns_screenscraper_result_when_available():
         patch(
             "pr_meta.scrapers.IGDBClient.scrape", new_callable=AsyncMock, return_value=None
         ) as igdb_mock,
-        patch("pr_meta.scrapers.TheGamesDBClient.scrape", new_callable=AsyncMock, return_value=None),
+        patch(
+            "pr_meta.scrapers.TheGamesDBClient.scrape", new_callable=AsyncMock, return_value=None
+        ),
     ):
         result = await scrape(platform="n64", title="Super Mario 64")
     assert result["title"] == "Super Mario 64"
@@ -267,7 +268,9 @@ async def test_scrape_falls_back_to_igdb_when_screenscraper_none():
         patch(
             "pr_meta.scrapers.IGDBClient.scrape", new_callable=AsyncMock, return_value=MINIMAL_META
         ) as igdb_mock,
-        patch("pr_meta.scrapers.TheGamesDBClient.scrape", new_callable=AsyncMock, return_value=None),
+        patch(
+            "pr_meta.scrapers.TheGamesDBClient.scrape", new_callable=AsyncMock, return_value=None
+        ),
     ):
         result = await scrape(platform="n64", title="Super Mario 64")
     assert result["title"] == "Super Mario 64"
@@ -299,7 +302,9 @@ async def test_scrape_returns_none_when_all_fail():
             "pr_meta.scrapers.ScreenScraperClient.scrape", new_callable=AsyncMock, return_value=None
         ),
         patch("pr_meta.scrapers.IGDBClient.scrape", new_callable=AsyncMock, return_value=None),
-        patch("pr_meta.scrapers.TheGamesDBClient.scrape", new_callable=AsyncMock, return_value=None),
+        patch(
+            "pr_meta.scrapers.TheGamesDBClient.scrape", new_callable=AsyncMock, return_value=None
+        ),
     ):
         result = await scrape(platform="n64", title="Super Mario 64")
     assert result is None

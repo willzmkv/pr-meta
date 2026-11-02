@@ -4,8 +4,8 @@ import logging
 import os
 from typing import Any
 
-from .screenscraper import ScreenScraperClient
 from .igdb import IGDBClient
+from .screenscraper import ScreenScraperClient
 from .thegamesdb import TheGamesDBClient
 
 logger = logging.getLogger(__name__)
@@ -37,9 +37,7 @@ async def scrape(platform: str, title: str) -> dict[str, Any] | None:
         try:
             result = await client.scrape(platform=platform, title=title)
         except Exception as exc:  # noqa: BLE001 — any source failure is a miss
-            logger.warning(
-                "%s failed for %s / %s: %r", type(client).__name__, platform, title, exc
-            )
+            logger.warning("%s failed for %s / %s: %r", type(client).__name__, platform, title, exc)
             continue
         if result is not None:
             return result

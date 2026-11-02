@@ -6,7 +6,6 @@ from typing import Any
 
 import aiohttp
 
-
 _TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 _GAMES_URL = "https://api.igdb.com/v4/games"
 
@@ -61,7 +60,7 @@ class IGDBClient:
         ts = g.get("first_release_date")
         if ts:
             # utcfromtimestamp() is deprecated since Python 3.12.
-            year = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).year
+            year = datetime.datetime.fromtimestamp(ts, tz=datetime.UTC).year
 
         genre: str | None = None
         genres = g.get("genres", [])

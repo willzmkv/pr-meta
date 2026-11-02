@@ -1,7 +1,7 @@
 import json
 
-from pr_meta.badges import Badge, BADGE_COLORS
-from pr_meta.meta_writer import write_meta, read_meta
+from pr_meta.badges import BADGE_COLORS, Badge
+from pr_meta.meta_writer import read_meta, write_meta
 
 
 def test_write_meta_creates_file(tmp_path, sample_meta):
@@ -72,3 +72,9 @@ def test_badge_colors_match_design_spec():
         Badge.BUILDING: "#4a9eff",
         Badge.BUILD_ERROR: "#e94560",
     }
+
+
+def test_badge_formats_as_its_value():
+    """Services build XML/JSON with f-strings; the value must come out, not 'Badge.X'."""
+    assert f"{Badge.BUILD_ERROR}" == "BUILD ERROR"
+    assert str(Badge.NATIVE) == "NATIVE"

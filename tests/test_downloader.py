@@ -1,6 +1,7 @@
+from unittest.mock import AsyncMock, patch
+
 import aiohttp
 import pytest
-from unittest.mock import AsyncMock, patch
 
 from pr_meta.downloader import download_media
 

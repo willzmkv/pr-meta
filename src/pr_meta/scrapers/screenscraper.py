@@ -4,7 +4,6 @@ from typing import Any
 
 import aiohttp
 
-
 _BASE_URL = "https://www.screenscraper.fr/api2/jeuInfos.php"
 
 # ScreenScraper numeric system IDs for platforms pr-meta handles.
