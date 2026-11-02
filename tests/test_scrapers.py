@@ -1,6 +1,9 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
+import aiohttp
+
+from pr_meta.scrapers import scrape
 from pr_meta.scrapers.igdb import IGDBClient
 from pr_meta.scrapers.screenscraper import ScreenScraperClient
 from pr_meta.scrapers.thegamesdb import TheGamesDBClient
@@ -220,3 +223,108 @@ async def test_thegamesdb_returns_none_on_empty():
     ):
         result = await client.scrape(platform="n64", title="Unknown")
     assert result is None
+
+
+MINIMAL_META = {
+    "title": "Super Mario 64",
+    "year": 1996,
+    "genre": "Platform",
+    "publisher": "Nintendo",
+    "developer": "Nintendo",
+    "description": "Guide Mario.",
+    "rating": 0.95,
+    "players": 1,
+    "image_url": "https://example.com/cover.png",
+    "video_url": None,
+}
+
+
+@pytest.mark.asyncio
+async def test_scrape_returns_screenscraper_result_when_available():
+    with (
+        patch(
+            "pr_meta.scrapers.ScreenScraperClient.scrape",
+            new_callable=AsyncMock,
+            return_value=MINIMAL_META,
+        ) as ss_mock,
+        patch(
+            "pr_meta.scrapers.IGDBClient.scrape", new_callable=AsyncMock, return_value=None
+        ) as igdb_mock,
+        patch("pr_meta.scrapers.TheGamesDBClient.scrape", new_callable=AsyncMock, return_value=None),
+    ):
+        result = await scrape(platform="n64", title="Super Mario 64")
+    assert result["title"] == "Super Mario 64"
+    ss_mock.assert_called_once()
+    igdb_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_scrape_falls_back_to_igdb_when_screenscraper_none():
+    with (
+        patch(
+            "pr_meta.scrapers.ScreenScraperClient.scrape", new_callable=AsyncMock, return_value=None
+        ),
+        patch(
+            "pr_meta.scrapers.IGDBClient.scrape", new_callable=AsyncMock, return_value=MINIMAL_META
+        ) as igdb_mock,
+        patch("pr_meta.scrapers.TheGamesDBClient.scrape", new_callable=AsyncMock, return_value=None),
+    ):
+        result = await scrape(platform="n64", title="Super Mario 64")
+    assert result["title"] == "Super Mario 64"
+    igdb_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_scrape_falls_back_to_thegamesdb_as_last_resort():
+    with (
+        patch(
+            "pr_meta.scrapers.ScreenScraperClient.scrape", new_callable=AsyncMock, return_value=None
+        ),
+        patch("pr_meta.scrapers.IGDBClient.scrape", new_callable=AsyncMock, return_value=None),
+        patch(
+            "pr_meta.scrapers.TheGamesDBClient.scrape",
+            new_callable=AsyncMock,
+            return_value=MINIMAL_META,
+        ) as tgdb_mock,
+    ):
+        result = await scrape(platform="n64", title="Super Mario 64")
+    assert result["title"] == "Super Mario 64"
+    tgdb_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_scrape_returns_none_when_all_fail():
+    with (
+        patch(
+            "pr_meta.scrapers.ScreenScraperClient.scrape", new_callable=AsyncMock, return_value=None
+        ),
+        patch("pr_meta.scrapers.IGDBClient.scrape", new_callable=AsyncMock, return_value=None),
+        patch("pr_meta.scrapers.TheGamesDBClient.scrape", new_callable=AsyncMock, return_value=None),
+    ):
+        result = await scrape(platform="n64", title="Super Mario 64")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_scrape_falls_through_when_a_scraper_raises():
+    """Network errors / bad credentials in one source must not abort the chain."""
+    with (
+        patch(
+            "pr_meta.scrapers.ScreenScraperClient.scrape",
+            new_callable=AsyncMock,
+            side_effect=aiohttp.ClientConnectionError("offline"),
+        ),
+        patch(
+            "pr_meta.scrapers.IGDBClient.scrape",
+            new_callable=AsyncMock,
+            side_effect=KeyError("access_token"),
+        ),
+        patch(
+            "pr_meta.scrapers.TheGamesDBClient.scrape",
+            new_callable=AsyncMock,
+            return_value=MINIMAL_META,
+        ) as tgdb_mock,
+    ):
+        result = await scrape(platform="n64", title="Super Mario 64")
+    assert result["title"] == "Super Mario 64"
+    tgdb_mock.assert_called_once()
