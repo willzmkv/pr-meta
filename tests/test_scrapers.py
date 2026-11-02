@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
+from pr_meta.scrapers.igdb import IGDBClient
 from pr_meta.scrapers.screenscraper import ScreenScraperClient
 
 
@@ -86,4 +87,78 @@ async def test_screenscraper_returns_none_on_missing_jeu():
         return_value=_make_mock_session({"response": {}}),
     ):
         result = await client.scrape(platform="n64", title="Missing Game")
+    assert result is None
+
+
+IGDB_TOKEN_RESPONSE = {"access_token": "mock_token_123", "expires_in": 3600}
+
+IGDB_GAME_RESPONSE = [
+    {
+        "name": "Super Mario 64",
+        "first_release_date": 835473600,  # 1996-06-23 UTC epoch
+        "genres": [{"name": "Platform"}],
+        "involved_companies": [
+            {"company": {"name": "Nintendo"}, "publisher": True, "developer": True}
+        ],
+        "summary": "Guide Mario through 15 courses.",
+        "rating": 95.0,
+        "cover": {"url": "//images.igdb.com/cover.jpg"},
+    }
+]
+
+
+def _make_igdb_session(token_resp, game_resp):
+    token_response = AsyncMock()
+    token_response.status = 200
+    token_response.json = AsyncMock(return_value=token_resp)
+    token_response.__aenter__ = AsyncMock(return_value=token_response)
+    token_response.__aexit__ = AsyncMock(return_value=False)
+
+    game_response = AsyncMock()
+    game_response.status = 200
+    game_response.json = AsyncMock(return_value=game_resp)
+    game_response.__aenter__ = AsyncMock(return_value=game_response)
+    game_response.__aexit__ = AsyncMock(return_value=False)
+
+    session = AsyncMock()
+    call_count = {"n": 0}
+
+    def side_effect(*args, **kwargs):
+        if call_count["n"] == 0:
+            call_count["n"] += 1
+            return token_response
+        return game_response
+
+    session.post = MagicMock(side_effect=side_effect)
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    return session
+
+
+@pytest.mark.asyncio
+async def test_igdb_returns_normalized_meta():
+    client = IGDBClient(client_id="test_id", client_secret="test_secret")
+    with patch(
+        "pr_meta.scrapers.igdb.aiohttp.ClientSession",
+        return_value=_make_igdb_session(IGDB_TOKEN_RESPONSE, IGDB_GAME_RESPONSE),
+    ):
+        result = await client.scrape(platform="n64", title="Super Mario 64")
+
+    assert result is not None
+    assert result["title"] == "Super Mario 64"
+    assert result["year"] == 1996
+    assert result["genre"] == "Platform"
+    assert result["publisher"] == "Nintendo"
+    assert abs(result["rating"] - 0.95) < 0.01
+    assert "igdb.com" in result["image_url"]
+
+
+@pytest.mark.asyncio
+async def test_igdb_returns_none_on_empty_response():
+    client = IGDBClient(client_id="test_id", client_secret="test_secret")
+    with patch(
+        "pr_meta.scrapers.igdb.aiohttp.ClientSession",
+        return_value=_make_igdb_session(IGDB_TOKEN_RESPONSE, []),
+    ):
+        result = await client.scrape(platform="n64", title="Unknown")
     assert result is None
