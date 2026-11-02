@@ -207,8 +207,14 @@ async def test_building_badge_before_install_yields_single_entry(tmp_path):
     assert games[0].findtext("pr_badge") == "NATIVE"
 
 
-async def _send(sock_path, payload: bytes, *, half_close: bool) -> None:
+async def _send(sock_path, payload: bytes, *, half_close: bool, split: int = 0) -> None:
     reader, writer = await asyncio.open_unix_connection(sock_path)
+    if split:
+        # Deliver the message in two separate chunks with a pause between them.
+        writer.write(payload[:split])
+        await writer.drain()
+        await asyncio.sleep(0.05)
+        payload = payload[split:]
     writer.write(payload)
     await writer.drain()
     if half_close:
@@ -241,7 +247,8 @@ async def test_socket_server_end_to_end(tmp_path):
                 await asyncio.sleep(0.01)
             await _send(sock_path, b"not json", half_close=True)
             install = dict(INSTALL_EVENT, game_dir=str(game_dir))
-            await _send(sock_path, json.dumps(install).encode(), half_close=True)
+            # Message arriving in several reads must be reassembled.
+            await _send(sock_path, json.dumps(install).encode(), half_close=True, split=20)
             # Client that keeps its write side open must still be served.
             badge = dict(BADGE_EVENT, badge="BUILDING", progress=10)
             await _send(sock_path, json.dumps(badge).encode(), half_close=False)

@@ -201,15 +201,37 @@ def _meta_to_gamelist_fields(meta: dict[str, Any], game_dir: Path) -> dict[str, 
     }
 
 
+_MAX_EVENT_BYTES = 65536
+
+
+async def _read_event(reader: asyncio.StreamReader) -> dict[str, Any] | None:
+    """Read one JSON object from *reader*.
+
+    Stops at EOF (client closed / half-closed) or as soon as the bytes received
+    so far parse as JSON (client keeps its write side open), so a message split
+    across several reads is reassembled. Returns None for an empty connection.
+    """
+    buf = b""
+    while len(buf) < _MAX_EVENT_BYTES:
+        chunk = await reader.read(_MAX_EVENT_BYTES - len(buf))
+        if not chunk:
+            break
+        buf += chunk
+        try:
+            return json.loads(buf)
+        except ValueError:  # incomplete (or invalid) so far — keep reading
+            continue
+    return json.loads(buf) if buf else None
+
+
 async def _serve(socket_path: str, games_root: Path) -> None:
     async def _client_handler(
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
     ) -> None:
         try:
-            raw = await reader.read(65536)
-            if raw:
-                event = json.loads(raw.decode())
+            event = await _read_event(reader)
+            if event is not None:
                 await handle_event(event, games_root=games_root)
         except Exception:
             logger.exception("Error handling event")
