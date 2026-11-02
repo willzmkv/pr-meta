@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 
 from pr_meta.scrapers.igdb import IGDBClient
 from pr_meta.scrapers.screenscraper import ScreenScraperClient
+from pr_meta.scrapers.thegamesdb import TheGamesDBClient
 
 
 SCREENSCRAPER_RESPONSE = {
@@ -159,6 +160,63 @@ async def test_igdb_returns_none_on_empty_response():
     with patch(
         "pr_meta.scrapers.igdb.aiohttp.ClientSession",
         return_value=_make_igdb_session(IGDB_TOKEN_RESPONSE, []),
+    ):
+        result = await client.scrape(platform="n64", title="Unknown")
+    assert result is None
+
+
+TGDB_RESPONSE = {
+    "data": {
+        "games": [
+            {
+                "id": 1,
+                "game_title": "Super Mario 64",
+                "release_date": "1996-06-23",
+                "genres": [9],
+                "publishers": [{"name": "Nintendo"}],
+                "developers": [{"name": "Nintendo"}],
+                "overview": "Guide Mario through 15 courses.",
+                "rating": "9/10",
+                "players": "1",
+            }
+        ]
+    },
+    "include": {
+        "genres": {"data": {"9": {"genre": "Platform"}}},
+        "boxart": {
+            "data": {
+                "1": [{"filename": "boxart/front/1-1.jpg", "side": "front", "type": "boxart"}]
+            },
+            "base_url": {"original": "https://cdn.thegamesdb.net/images/original/"},
+        },
+    },
+}
+
+
+@pytest.mark.asyncio
+async def test_thegamesdb_returns_normalized_meta():
+    client = TheGamesDBClient(api_key="test_key")
+    with patch(
+        "pr_meta.scrapers.thegamesdb.aiohttp.ClientSession",
+        return_value=_make_mock_session(TGDB_RESPONSE),
+    ):
+        result = await client.scrape(platform="n64", title="Super Mario 64")
+
+    assert result is not None
+    assert result["title"] == "Super Mario 64"
+    assert result["year"] == 1996
+    assert result["genre"] == "Platform"
+    assert result["publisher"] == "Nintendo"
+    assert result["image_url"].endswith(".jpg")
+
+
+@pytest.mark.asyncio
+async def test_thegamesdb_returns_none_on_empty():
+    empty = {"data": {"games": []}, "include": {}}
+    client = TheGamesDBClient(api_key="test_key")
+    with patch(
+        "pr_meta.scrapers.thegamesdb.aiohttp.ClientSession",
+        return_value=_make_mock_session(empty),
     ):
         result = await client.scrape(platform="n64", title="Unknown")
     assert result is None
